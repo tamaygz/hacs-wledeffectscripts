@@ -222,9 +222,9 @@ class WLEDEffectBase(ABC):
             # Always clean up
             self.run_once_mode = False
             if self.running:
-                await self.stop()
+                await self.stop(blackout_on_stop=False)
     
-    async def stop(self):
+    async def stop(self, blackout_on_stop=True):
         """Stop the WLED effect"""
         self.log.info(f"Stopping {self.get_effect_name()} - killing {len(self.active_tasks)} tasks")
         
@@ -241,7 +241,10 @@ class WLEDEffectBase(ABC):
         self.active_tasks.clear()
         
         # Clear all LEDs immediately
-        await self.blackout_segment()
+        if blackout_on_stop:
+            self.log.info("Blackouting segment on stop...")
+            await self.blackout_segment()
+            self.log.info("Blackout complete")
         
         # Cleanup http client
         await self.http.cleanup()
