@@ -190,15 +190,15 @@ class WLEDEffectBase(ABC):
         self.running = True
         self.active_tasks = set()
         
-        # Clear segment
-        self.log.info("Clearing WLED segment...")
-        await self.blackout_segment()
-        self.log.info("Blackout complete")
-        
         if self.run_once_mode == True:
             self.log.info("Running in single iteration mode")
             await self.run_effect()
         else:
+            # Clear segment
+            self.log.info("Clearing WLED segment...")
+            await self.blackout_segment()
+            self.log.info("Blackout complete")
+            
             # Start effect task
             self.log.info(f"Creating {self.get_effect_name()} task...")
             await self.task.create_task("wled_effect_main", self.run_effect())

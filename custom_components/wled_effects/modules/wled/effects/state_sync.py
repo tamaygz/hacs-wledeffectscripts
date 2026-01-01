@@ -11,11 +11,11 @@ from wled.wled_effect_base import (
 
 
 # Effect Configuration
-EFFECT_ANIM_MODE = "Single"         # Animation mode: "Single", "Dual", or "Center"
+EFFECT_ANIM_MODE = "Dual"         # Animation mode: "Single", "Dual", or "Center"
                                      # Single: Fill from start to end (left to right)
                                      # Dual: Fill from both ends toward middle
                                      # Center: Fill from middle outward to both ends
-SYNC_COLOR = (0, 200, 255)         # Color for "filled" LEDs (cyan by default)
+SYNC_COLOR = (255, 30, 10)         # Color for "filled" LEDs (brownish by default)
 SYNC_BACKGROUND_COLOR = (0, 0, 0)  # Color for "empty" LEDs (dim black)
 SYNC_SMOOTH_TRANSITION = True       # Animate changes smoothly
 SYNC_TRANSITION_STEPS = 10          # Steps for smooth animation

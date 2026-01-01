@@ -191,7 +191,7 @@ async def main():
         # await effect.run_once()
         # Keep running until interrupted
         while effect.running:
-            await asyncio.sleep(1)
+            await asyncio.sleep(0.5)
     except KeyboardInterrupt:
         log.info("\nKeyboard interrupt received")
         await effect.stop()

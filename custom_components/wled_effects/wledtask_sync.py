@@ -195,7 +195,7 @@ async def wled_sync_stop():
 @service
 async def wled_sync_run_once():
     """Run the WLED state sync effect for one iteration"""
-    global effect
+    global effect, state_provider_instance
     log.info("WLED State Sync: Running single iteration")
     if effect:
         await effect.run_once()
