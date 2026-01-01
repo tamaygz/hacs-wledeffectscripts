@@ -5,7 +5,7 @@ LEDs fade in sequentially from first to last, then restart
 
 from wled.wled_effect_base import (
     WLEDEffectBase, 
-    SEGMENT_ID, START_LED, STOP_LED, LED_BRIGHTNESS
+    DEFAULT_LED_BRIGHTNESS
 )
 
 
@@ -29,7 +29,7 @@ class LoadingEffect(WLEDEffectBase):
         
         while self.running:
             # Fade in each LED sequentially
-            for current_led in range(START_LED, STOP_LED + 1):
+            for current_led in range(self.start_led, self.stop_led + 1):
                 if not self.running:
                     return
                 
@@ -37,7 +37,7 @@ class LoadingEffect(WLEDEffectBase):
                 led_array = []
                 
                 # Calculate which LEDs should be on and at what brightness
-                for led_pos in range(START_LED, STOP_LED + 1):
+                for led_pos in range(self.start_led, self.stop_led + 1):
                     if led_pos <= current_led:
                         # This LED should be on
                         if LOADING_TRAIL_LENGTH == 0:
@@ -58,21 +58,21 @@ class LoadingEffect(WLEDEffectBase):
                         
                         if brightness_factor > 0:
                             # Apply color and brightness
-                            r = int(LOADING_COLOR[0] * brightness_factor * (LED_BRIGHTNESS / 255.0))
-                            g = int(LOADING_COLOR[1] * brightness_factor * (LED_BRIGHTNESS / 255.0))
-                            b = int(LOADING_COLOR[2] * brightness_factor * (LED_BRIGHTNESS / 255.0))
+                            r = int(LOADING_COLOR[0] * brightness_factor * (self.led_brightness / 255.0))
+                            g = int(LOADING_COLOR[1] * brightness_factor * (self.led_brightness / 255.0))
+                            b = int(LOADING_COLOR[2] * brightness_factor * (self.led_brightness / 255.0))
                             
                             hex_color = f"{r:02x}{g:02x}{b:02x}"
-                            led_array.extend([led_pos - START_LED, hex_color])
+                            led_array.extend([led_pos - self.start_led, hex_color])
                         else:
                             # LED is off
-                            led_array.extend([led_pos - START_LED, "000000"])
+                            led_array.extend([led_pos - self.start_led, "000000"])
                     else:
                         # This LED hasn't been reached yet
-                        led_array.extend([led_pos - START_LED, "000000"])
+                        led_array.extend([led_pos - self.start_led, "000000"])
                 
                 # Send command
-                payload = {"seg": {"id": SEGMENT_ID, "i": led_array, "bri": 255}}
+                payload = {"seg": {"id": self.segment_id, "i": led_array, "bri": 255}}
                 await self.send_wled_command(payload, f"Loading at LED {current_led}")
                 
                 # Wait before next step
@@ -93,10 +93,10 @@ class LoadingEffect(WLEDEffectBase):
             # Clear all LEDs before restarting
             if self.running:
                 led_array = []
-                for led_pos in range(START_LED, STOP_LED + 1):
-                    led_array.extend([led_pos - START_LED, "000000"])
+                for led_pos in range(self.start_led, self.stop_led + 1):
+                    led_array.extend([led_pos - self.start_led, "000000"])
                 
-                payload = {"seg": {"id": SEGMENT_ID, "i": led_array, "bri": 255}}
+                payload = {"seg": {"id": self.segment_id, "i": led_array, "bri": 255}}
                 await self.send_wled_command(payload, "Clear for restart")
                 await self.interruptible_sleep(0.1)
         

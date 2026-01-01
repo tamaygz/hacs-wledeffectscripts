@@ -6,8 +6,7 @@ Random segments that fade in and out with smooth transitions
 import random
 import math
 from wled.wled_effect_base import (
-    WLEDEffectBase, SEGMENT_ID, START_LED, STOP_LED, 
-    LED_BRIGHTNESS, DEBUG_MODE
+    WLEDEffectBase, DEFAULT_LED_BRIGHTNESS, DEBUG_MODE
 )
 
 # Effect Configuration
@@ -81,12 +80,12 @@ class SegmentFadeEffect(WLEDEffectBase):
         
         # Choose random position
         segment_length = random.randint(SEGMENT_LENGTH_MIN, SEGMENT_LENGTH_MAX)
-        max_start_pos = STOP_LED - segment_length + 1
+        max_start_pos = self.stop_led - segment_length + 1
         
         # Try to find non-overlapping position
         start_pos = None
         for attempt in range(20):
-            candidate_start = random.randint(START_LED, max_start_pos)
+            candidate_start = random.randint(self.start_led, max_start_pos)
             candidate_end = candidate_start + segment_length - 1
             
             if not self.check_overlap(candidate_start, candidate_end):
@@ -123,16 +122,16 @@ class SegmentFadeEffect(WLEDEffectBase):
             brightness_factor = self.ease_in_out(progress)
             
             # Apply brightness to each color channel
-            r = int(base_color[0] * brightness_factor * (LED_BRIGHTNESS / 255.0))
-            g = int(base_color[1] * brightness_factor * (LED_BRIGHTNESS / 255.0))
-            b = int(base_color[2] * brightness_factor * (LED_BRIGHTNESS / 255.0))
+            r = int(base_color[0] * brightness_factor * (self.led_brightness / 255.0))
+            g = int(base_color[1] * brightness_factor * (self.led_brightness / 255.0))
+            b = int(base_color[2] * brightness_factor * (self.led_brightness / 255.0))
             
             led_array = []
             hex_color = f"{r:02x}{g:02x}{b:02x}"
             for abs_index in range(start_pos, end_pos + 1):
-                led_array.extend([abs_index - START_LED, hex_color])
+                led_array.extend([abs_index - self.start_led, hex_color])
             
-            payload = {"seg": {"id": SEGMENT_ID, "i": led_array, "bri": 255}}
+            payload = {"seg": {"id": self.segment_id, "i": led_array, "bri": 255}}
             desc = f"Seg {segment_id} fade in step {step}/{num_steps} (factor={brightness_factor:.2f})"
             await self.send_wled_command(payload, desc if DEBUG_MODE else "")
             await self.task.sleep(step_duration)
@@ -178,16 +177,16 @@ class SegmentFadeEffect(WLEDEffectBase):
             brightness_factor = self.ease_in_out(1.0 - progress)
             
             # Apply brightness to each color channel
-            r = int(base_color[0] * brightness_factor * (LED_BRIGHTNESS / 255.0))
-            g = int(base_color[1] * brightness_factor * (LED_BRIGHTNESS / 255.0))
-            b = int(base_color[2] * brightness_factor * (LED_BRIGHTNESS / 255.0))
+            r = int(base_color[0] * brightness_factor * (self.led_brightness / 255.0))
+            g = int(base_color[1] * brightness_factor * (self.led_brightness / 255.0))
+            b = int(base_color[2] * brightness_factor * (self.led_brightness / 255.0))
             
             led_array = []
             hex_color = f"{r:02x}{g:02x}{b:02x}"
             for abs_index in range(start_pos, end_pos + 1):
-                led_array.extend([abs_index - START_LED, hex_color])
+                led_array.extend([abs_index - self.start_led, hex_color])
             
-            payload = {"seg": {"id": SEGMENT_ID, "i": led_array, "bri": 255}}
+            payload = {"seg": {"id": self.segment_id, "i": led_array, "bri": 255}}
             desc = f"Seg {segment_id} fade out step {step}/{num_steps} (factor={brightness_factor:.2f})"
             await self.send_wled_command(payload, desc if DEBUG_MODE else "")
             await self.task.sleep(step_duration)
@@ -195,9 +194,9 @@ class SegmentFadeEffect(WLEDEffectBase):
         # Clear LEDs
         led_array = []
         for abs_index in range(start_pos, end_pos + 1):
-            led_array.extend([abs_index - START_LED, "000000"])
+            led_array.extend([abs_index - self.start_led, "000000"])
         
-        payload = {"seg": {"id": SEGMENT_ID, "i": led_array, "bri": 255}}
+        payload = {"seg": {"id": self.segment_id, "i": led_array, "bri": 255}}
         await self.send_wled_command(payload, f"Clear segment {segment_id} LEDs")
         
         # Unregister this segment

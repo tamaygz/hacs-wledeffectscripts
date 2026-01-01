@@ -116,6 +116,27 @@ class PyscriptHTTPClient:
             log.error(f"Error getting device state: {e}")
             return None
     
+    async def get_info(self):
+        """Get WLED device information"""
+        import aiohttp
+        
+        if self.shared_session is None:
+            self.shared_session = aiohttp.ClientSession()
+        
+        try:
+            async with self.shared_session.get(
+                f"http://{WLED_IP}/json/info",
+                timeout=aiohttp.ClientTimeout(total=5)
+            ) as resp:
+                if resp.status == 200:
+                    return await resp.json()
+                else:
+                    log.error(f"Failed to get device info: HTTP {resp.status}")
+                    return None
+        except Exception as e:
+            log.error(f"Error getting device info: {e}")
+            return None
+    
     async def send_command(self, payload, retry_count=2):
         """Send command to WLED using REST API with retry logic"""
         import aiohttp

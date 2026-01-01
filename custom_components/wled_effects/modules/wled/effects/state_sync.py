@@ -6,12 +6,12 @@ Example: Show curtain position, volume level, or any numeric value (0-100%)
 
 from wled.wled_effect_base import (
     WLEDEffectBase, 
-    SEGMENT_ID, START_LED, STOP_LED, LED_BRIGHTNESS
+    DEFAULT_LED_BRIGHTNESS
 )
 
 
 # Effect Configuration
-EFFECT_ANIM_MODE = "Dual"         # Animation mode: "Single", "Dual", or "Center"
+EFFECT_ANIM_MODE = "Center"         # Animation mode: "Single", "Dual", or "Center"
                                      # Single: Fill from start to end (left to right)
                                      # Dual: Fill from both ends toward middle
                                      # Center: Fill from middle outward to both ends
@@ -53,13 +53,13 @@ class StateSyncEffect(WLEDEffectBase):
     
     async def render_percentage(self, percentage):
         """Render the LED strip to show a specific percentage"""
-        total_leds = STOP_LED - START_LED + 1
+        total_leds = self.stop_led - self.start_led + 1
         lit_count = int((percentage / 100.0) * total_leds)
         
         led_array = []
         
-        for led_pos in range(START_LED, STOP_LED + 1):
-            led_index = led_pos - START_LED
+        for led_pos in range(self.start_led, self.stop_led + 1):
+            led_index = led_pos - self.start_led
             
             # Determine if this LED should be lit based on animation mode
             should_light = False
@@ -83,19 +83,19 @@ class StateSyncEffect(WLEDEffectBase):
             # Set color based on whether LED should be lit
             if should_light:
                 # This LED should be "filled" (active color)
-                r = int(SYNC_COLOR[0] * (LED_BRIGHTNESS / 255.0))
-                g = int(SYNC_COLOR[1] * (LED_BRIGHTNESS / 255.0))
-                b = int(SYNC_COLOR[2] * (LED_BRIGHTNESS / 255.0))
+                r = int(SYNC_COLOR[0] * (self.led_brightness / 255.0))
+                g = int(SYNC_COLOR[1] * (self.led_brightness / 255.0))
+                b = int(SYNC_COLOR[2] * (self.led_brightness / 255.0))
             else:
                 # This LED should be "empty" (background color)
-                r = int(SYNC_BACKGROUND_COLOR[0] * (LED_BRIGHTNESS / 255.0))
-                g = int(SYNC_BACKGROUND_COLOR[1] * (LED_BRIGHTNESS / 255.0))
-                b = int(SYNC_BACKGROUND_COLOR[2] * (LED_BRIGHTNESS / 255.0))
+                r = int(SYNC_BACKGROUND_COLOR[0] * (self.led_brightness / 255.0))
+                g = int(SYNC_BACKGROUND_COLOR[1] * (self.led_brightness / 255.0))
+                b = int(SYNC_BACKGROUND_COLOR[2] * (self.led_brightness / 255.0))
             
             hex_color = f"{r:02x}{g:02x}{b:02x}"
             led_array.extend([led_index, hex_color])
         
-        payload = {"seg": {"id": SEGMENT_ID, "i": led_array, "bri": 255}}
+        payload = {"seg": {"id": self.segment_id, "i": led_array, "bri": 255}}
         await self.send_wled_command(payload, f"Display {percentage:.1f}% ({EFFECT_ANIM_MODE} mode)")
     
     async def smooth_transition(self, from_pct, to_pct):

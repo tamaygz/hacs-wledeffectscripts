@@ -5,7 +5,7 @@ Example effects demonstrating how to create new WLED effects
 
 from wled.wled_effect_base import (
     WLEDEffectBase, 
-    SEGMENT_ID, START_LED, STOP_LED, LED_BRIGHTNESS
+    DEFAULT_LED_BRIGHTNESS
 )
 import random
 
@@ -57,23 +57,23 @@ class RainbowWaveEffect(WLEDEffectBase):
             # Build LED array for all LEDs
             led_array = []
             
-            for led_pos in range(START_LED, STOP_LED + 1):
+            for led_pos in range(self.start_led, self.stop_led + 1):
                 # Calculate position in rainbow (0-360 degrees)
-                position = (led_pos - START_LED) * (360.0 / (STOP_LED - START_LED + 1))
+                position = (led_pos - self.start_led) * (360.0 / (self.stop_led - self.start_led + 1))
                 
                 # Get color for this position with offset
                 r, g, b = self.get_rainbow_color(position, offset)
                 
                 # Apply brightness
-                r = int(r * (LED_BRIGHTNESS / 255.0))
-                g = int(g * (LED_BRIGHTNESS / 255.0))
-                b = int(b * (LED_BRIGHTNESS / 255.0))
+                r = int(r * (self.led_brightness / 255.0))
+                g = int(g * (self.led_brightness / 255.0))
+                b = int(b * (self.led_brightness / 255.0))
                 
                 hex_color = f"{r:02x}{g:02x}{b:02x}"
-                led_array.extend([led_pos - START_LED, hex_color])
+                led_array.extend([led_pos - self.start_led, hex_color])
             
             # Send command
-            payload = {"seg": {"id": SEGMENT_ID, "i": led_array, "bri": 255}}
+            payload = {"seg": {"id": self.segment_id, "i": led_array, "bri": 255}}
             await self.send_wled_command(payload, f"Rainbow wave offset={offset}")
             
             # Move the wave
@@ -129,7 +129,7 @@ class SparkleEffect(WLEDEffectBase):
             # Add new sparkle occasionally
             if step_count % int(SPARKLE_NEW_RATE / 0.05) == 0:
                 if len(self.sparkles) < SPARKLE_DENSITY:
-                    new_pos = random.randint(START_LED, STOP_LED)
+                    new_pos = random.randint(self.start_led, self.stop_led)
                     if new_pos not in self.sparkles:
                         self.sparkles[new_pos] = SPARKLE_FADE_STEPS
             
@@ -144,14 +144,14 @@ class SparkleEffect(WLEDEffectBase):
                 if new_level <= 0:
                     sparkles_to_remove.append(led_pos)
                     # Turn off
-                    led_array.extend([led_pos - START_LED, "000000"])
+                    led_array.extend([led_pos - self.start_led, "000000"])
                 else:
                     self.sparkles[led_pos] = new_level
                     # Calculate brightness
                     factor = new_level / SPARKLE_FADE_STEPS
-                    brightness = int(255 * factor * (LED_BRIGHTNESS / 255.0))
+                    brightness = int(255 * factor * (self.led_brightness / 255.0))
                     hex_color = f"{brightness:02x}{brightness:02x}{brightness:02x}"
-                    led_array.extend([led_pos - START_LED, hex_color])
+                    led_array.extend([led_pos - self.start_led, hex_color])
             
             # Remove dead sparkles
             for pos in sparkles_to_remove:
@@ -159,7 +159,7 @@ class SparkleEffect(WLEDEffectBase):
             
             # Send command if we have changes
             if led_array:
-                payload = {"seg": {"id": SEGMENT_ID, "i": led_array, "bri": 255}}
+                payload = {"seg": {"id": self.segment_id, "i": led_array, "bri": 255}}
                 await self.send_wled_command(payload, f"Sparkle update ({len(self.sparkles)} active)")
             
             step_count += 1
