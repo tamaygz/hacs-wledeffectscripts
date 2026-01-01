@@ -33,6 +33,7 @@ class StateSyncEffect(WLEDEffectBase):
         self.log = logger
         self.http = http_client
         self.running = False
+        self.run_once_mode = False
         self.active_tasks = set()
         self.command_count = 0
         self.success_count = 0
@@ -115,7 +116,7 @@ class StateSyncEffect(WLEDEffectBase):
         while self.running:
             # Get current state value
             new_percentage = await self.state_provider.get_state()
-            
+
             # Check if it changed
             if abs(new_percentage - self.target_percentage) > 0.5:  # 0.5% threshold
                 self.log.info(f"State changed: {self.target_percentage:.1f}% -> {new_percentage:.1f}%")

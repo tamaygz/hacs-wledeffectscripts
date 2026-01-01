@@ -186,7 +186,9 @@ async def main():
     effect = StateSyncEffect(task_mgr, log, http_client, state_provider)
     
     try:
+        # state_provider.mode = "random"
         await effect.start()
+        # await effect.run_once()
         # Keep running until interrupted
         while effect.running:
             await asyncio.sleep(1)

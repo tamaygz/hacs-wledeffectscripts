@@ -195,9 +195,13 @@ class WLEDEffectBase(ABC):
         await self.blackout_segment()
         self.log.info("Blackout complete")
         
-        # Start effect task
-        self.log.info(f"Creating {self.get_effect_name()} task...")
-        await self.task.create_task("wled_effect_main", self.run_effect())
+        if self.run_once_mode == True:
+            self.log.info("Running in single iteration mode")
+            await self.run_effect()
+        else:
+            # Start effect task
+            self.log.info(f"Creating {self.get_effect_name()} task...")
+            await self.task.create_task("wled_effect_main", self.run_effect())
         
         self.log.info(f"{self.get_effect_name()} started")
     
@@ -215,6 +219,7 @@ class WLEDEffectBase(ABC):
         try:
             # Use existing start method
             await self.start()
+            self.log.info(f"Running {self.get_effect_name()} once (single iteration mode)")
             
             # Wait for effect to complete (it should exit after one iteration)
             # Note: The implementer's run_effect() should check self.run_once_mode
