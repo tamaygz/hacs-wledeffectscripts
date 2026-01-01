@@ -2,6 +2,8 @@
 
 A modular Python framework for creating custom WLED LED strip effects that run seamlessly in Home Assistant via Pyscript, with full standalone testing support.
 
+credit: based off https://github.com/christianweinmayr/hacs-wled-scripts
+
 ## 🌟 Features
 
 - **5 Built-in Effects**: Segment fade, loading animation, rainbow wave, sparkles, and state synchronization

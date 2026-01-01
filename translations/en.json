@@ -1,0 +1,13 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up WLED Effect Scripts",
+        "description": "This will automatically copy pyscript files to your `/config/pyscript/` directory.\n\nMake sure Pyscript integration is installed before proceeding.\n\nAfter setup, you'll need to reload Pyscript or restart Home Assistant."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Only a single instance is allowed."
+    }
+  }
+}
