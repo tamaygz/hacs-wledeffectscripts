@@ -17,6 +17,7 @@ ATTRIBUTE_NAME = "current_position"  # Set to attribute name if monitoring an at
 # ENTITY_TO_MONITOR = "media_player.living_room" with ATTRIBUTE_NAME = "volume_level"
 # ENTITY_TO_MONITOR = "input_number.brightness_slider" with ATTRIBUTE_NAME = None (uses state)
 
+STATECHANGE_RUN_ONCE = True  # If True, effect runs atleast once per state change, even if the effect isnt currently running
 
 # Logger wrapper to make pyscript log available in nested scopes
 class Logger:
@@ -159,7 +160,13 @@ class PyscriptHTTPClient:
 effect = None
 state_provider_instance = None
 
-
+if effect is None:
+    task_mgr = PyscriptTaskManager()
+    http_client = PyscriptHTTPClient()
+    state_provider_instance = HAStateProvider(ENTITY_TO_MONITOR, ATTRIBUTE_NAME)
+    logger = Logger()
+    effect = StateSyncEffect(task_mgr, logger, http_client, state_provider_instance)
+        
 @service
 async def wled_sync_start():
     """Start the WLED state sync effect"""
@@ -195,3 +202,7 @@ async def state_changed_trigger(var_name=None, value=None):
         # The effect's polling loop will pick up the change
         # This trigger just ensures minimal latency
         log.debug(f"State trigger fired: {var_name} = {value}")
+    else if STATECHANGE_RUN_ONCE:
+        # If effect is not running, start it for one iteration
+        log.info("State changed - starting effect for one iteration")
+        await effect.run_once()

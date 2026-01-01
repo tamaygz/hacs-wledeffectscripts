@@ -37,6 +37,7 @@ class WLEDEffectBase(ABC):
         
         # State
         self.running = False
+        self.run_once_mode = False
         self.active_tasks = set()
         
         # Diagnostics
@@ -199,6 +200,29 @@ class WLEDEffectBase(ABC):
         await self.task.create_task("wled_effect_main", self.run_effect())
         
         self.log.info(f"{self.get_effect_name()} started")
+    
+    async def run_once(self):
+        """Run the effect once without looping, then automatically stop.
+        
+        Sets run_once_mode flag - implementers of run_effect() should check
+        self.run_once_mode and break their loop after one iteration.
+        """
+        self.log.info(f"Running {self.get_effect_name()} once (single iteration mode)")
+        
+        # Set the flag for effect implementers to check
+        self.run_once_mode = True
+        
+        try:
+            # Use existing start method
+            await self.start()
+            
+            # Wait for effect to complete (it should exit after one iteration)
+            # Note: The implementer's run_effect() should check self.run_once_mode
+        finally:
+            # Always clean up
+            self.run_once_mode = False
+            if self.running:
+                await self.stop()
     
     async def stop(self):
         """Stop the WLED effect"""

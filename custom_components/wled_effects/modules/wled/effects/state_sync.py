@@ -125,6 +125,11 @@ class StateSyncEffect(WLEDEffectBase):
                 await self.smooth_transition(self.current_percentage, self.target_percentage)
                 self.current_percentage = self.target_percentage
             
+            # Check if we should exit after one iteration
+            if self.run_once_mode:
+                self.log.info("State sync completed single iteration")
+                break
+            
             # Wait before next check
             await self.interruptible_sleep(0.5)
         

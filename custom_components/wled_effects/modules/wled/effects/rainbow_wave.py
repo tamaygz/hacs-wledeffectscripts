@@ -79,6 +79,11 @@ class RainbowWaveEffect(WLEDEffectBase):
             # Move the wave
             offset = (offset + 10) % 360
             
+            # Check if we should exit after one iteration
+            if self.run_once_mode:
+                self.log.info("Rainbow wave completed single iteration")
+                break
+            
             # Wait before next step
             await self.interruptible_sleep(RAINBOW_WAVE_SPEED)
         
@@ -158,6 +163,12 @@ class SparkleEffect(WLEDEffectBase):
                 await self.send_wled_command(payload, f"Sparkle update ({len(self.sparkles)} active)")
             
             step_count += 1
+            
+            # Check if we should exit after one iteration
+            if self.run_once_mode:
+                self.log.info("Sparkle completed single iteration")
+                break
+            
             await self.interruptible_sleep(0.05)
         
         self.log.info("Sparkle animation complete")

@@ -223,4 +223,9 @@ class SegmentFadeEffect(WLEDEffectBase):
         
         # Keep running
         while self.running:
+            # Check if we should exit after one iteration
+            if self.run_once_mode:
+                self.log.info("Segment fade completed initial segments launch")
+                break
+            
             await self.task.sleep(10)

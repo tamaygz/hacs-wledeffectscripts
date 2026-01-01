@@ -81,6 +81,11 @@ class LoadingEffect(WLEDEffectBase):
             if not self.running:
                 return
             
+            # Check if we should exit after one iteration
+            if self.run_once_mode:
+                self.log.info("Loading completed single iteration")
+                break
+            
             # Wait at the end before restarting
             self.log.debug(f"Loading complete, waiting {LOADING_WAIT_TIME}s before restart")
             await self.interruptible_sleep(LOADING_WAIT_TIME)
