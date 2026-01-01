@@ -190,27 +190,41 @@ class WLEDEffectManager:
         self.http_client = PyscriptHTTPClient()
         self.logger = Logger()
     
-    def load_effect_class(self, effect_module, effect_class_name):
+    def load_effect_class(self, effect_name):
         """
-        Dynamically load an effect class
+        Load an effect class by name
         
         Args:
-            effect_module: Module path (e.g., "wled.effects.rainbow_wave")
-            effect_class_name: Class name (e.g., "RainbowWaveEffect")
+            effect_name: Effect name (e.g., "Rainbow Wave", "Segment Fade", etc.)
         """
         try:
-            # Import the module dynamically
-            import importlib
-            module = importlib.import_module(effect_module)
+            # Map effect names to their imports
+            effect_map = {
+                "Rainbow Wave": ("wled.effects.rainbow_wave", "RainbowWaveEffect"),
+                "Segment Fade": ("wled.effects.segment_fade", "SegmentFadeEffect"),
+                "Loading": ("wled.effects.loading", "LoadingEffect"),
+                "State Sync": ("wled.effects.state_sync", "StateSyncEffect"),
+            }
             
-            # Get the class
-            effect_class = getattr(module, effect_class_name)
-            self.effect_class = effect_class
+            if effect_name not in effect_map:
+                log.error(f"Unknown effect: {effect_name}")
+                return False
             
-            log.info(f"Loaded effect class: {effect_class_name} from {effect_module}")
+            module_path, class_name = effect_map[effect_name]
+            
+            # Import the effect class
+            import_statement = f"from {module_path} import {class_name}"
+            local_vars = {}
+            exec(import_statement, globals(), local_vars)
+            
+            self.effect_class = local_vars[class_name]
+            
+            log.info(f"Loaded effect: {effect_name} ({class_name})")
             return True
         except Exception as e:
-            log.error(f"Failed to load effect class {effect_class_name}: {e}")
+            log.error(f"Failed to load effect {effect_name}: {e}")
+            import traceback
+            log.error(f"Traceback: {traceback.format_exc()}")
             return False
     
     def create_effect(self, **kwargs):
@@ -365,8 +379,7 @@ manager = WLEDEffectManager()
 
 @service
 def wled_effect_configure(
-    effect_module: str = "wled.effects.segment_fade",
-    effect_class: str = "SegmentFadeEffect",
+    effect: str = "Segment Fade",
     state_entity: str = None,
     state_attribute: str = None,
     trigger_entity: str = None,
@@ -382,20 +395,20 @@ def wled_effect_configure(
 name: Configure WLED Effect
 description: Load and configure a WLED effect with optional state monitoring and triggers
 fields:
-  effect_module:
-    description: Python module path (e.g., "wled.effects.rainbow_wave")
-    example: "wled.effects.segment_fade"
+  effect:
+    description: Select the WLED effect to use
     required: true
+    default: "Segment Fade"
+    example: "Rainbow Wave"
     selector:
-      text:
-  effect_class:
-    description: Effect class name (e.g., "RainbowWaveEffect")
-    example: "SegmentFadeEffect"
-    required: true
-    selector:
-      text:
+      select:
+        options:
+          - "Rainbow Wave"
+          - "Segment Fade"
+          - "Loading"
+          - "State Sync"
   state_entity:
-    description: Entity ID for state provider (required for StateSyncEffect)
+    description: Entity ID for state provider (required for State Sync effect)
     example: "sensor.living_room_temperature"
     selector:
       entity:
@@ -459,11 +472,11 @@ fields:
 """
     global manager
     
-    log.info(f"Configuring effect: {effect_class} from {effect_module}")
+    log.info(f"Configuring effect: {effect}")
     
     # Load effect class
-    if not manager.load_effect_class(effect_module, effect_class):
-        log.error("Failed to load effect class")
+    if not manager.load_effect_class(effect):
+        log.error("Failed to load effect")
         return
     
     # Setup state provider if needed
