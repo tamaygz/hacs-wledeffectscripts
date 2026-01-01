@@ -11,6 +11,10 @@ from wled.wled_effect_base import (
 
 
 # Effect Configuration
+EFFECT_ANIM_MODE = "Single"         # Animation mode: "Single", "Dual", or "Center"
+                                     # Single: Fill from start to end (left to right)
+                                     # Dual: Fill from both ends toward middle
+                                     # Center: Fill from middle outward to both ends
 SYNC_COLOR = (0, 200, 255)         # Color for "filled" LEDs (cyan by default)
 SYNC_BACKGROUND_COLOR = (0, 0, 0)  # Color for "empty" LEDs (dim black)
 SYNC_SMOOTH_TRANSITION = True       # Animate changes smoothly
@@ -57,7 +61,27 @@ class StateSyncEffect(WLEDEffectBase):
         for led_pos in range(START_LED, STOP_LED + 1):
             led_index = led_pos - START_LED
             
-            if led_index < lit_count:
+            # Determine if this LED should be lit based on animation mode
+            should_light = False
+            
+            if EFFECT_ANIM_MODE == "Single":
+                # Fill from start to end (left to right)
+                should_light = (led_index < lit_count)
+                
+            elif EFFECT_ANIM_MODE == "Dual":
+                # Fill from both ends toward middle
+                lit_per_side = int((percentage / 200.0) * total_leds)
+                should_light = (led_index < lit_per_side) or (led_index >= total_leds - lit_per_side)
+                
+            elif EFFECT_ANIM_MODE == "Center":
+                # Fill from middle outward to both ends
+                center_index = total_leds / 2.0
+                start_index = int(center_index - lit_count / 2.0)
+                end_index = start_index + lit_count
+                should_light = (start_index <= led_index < end_index)
+            
+            # Set color based on whether LED should be lit
+            if should_light:
                 # This LED should be "filled" (active color)
                 r = int(SYNC_COLOR[0] * (LED_BRIGHTNESS / 255.0))
                 g = int(SYNC_COLOR[1] * (LED_BRIGHTNESS / 255.0))
@@ -72,7 +96,7 @@ class StateSyncEffect(WLEDEffectBase):
             led_array.extend([led_index, hex_color])
         
         payload = {"seg": {"id": SEGMENT_ID, "i": led_array, "bri": 255}}
-        await self.send_wled_command(payload, f"Display {percentage:.1f}%")
+        await self.send_wled_command(payload, f"Display {percentage:.1f}% ({EFFECT_ANIM_MODE} mode)")
     
     async def smooth_transition(self, from_pct, to_pct):
         """Smoothly animate from one percentage to another"""
