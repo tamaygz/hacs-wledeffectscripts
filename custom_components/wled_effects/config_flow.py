@@ -16,7 +16,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class WLEDScriptsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    """Handle a config flow for WLED Scripts."""
+    """Handle a config flow for WLED Effects."""
 
     VERSION = 1
 
