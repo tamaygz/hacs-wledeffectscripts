@@ -190,7 +190,14 @@ async def wled_sync_stop():
     if effect:
         await effect.stop()
 
-
+@service
+async def wled_sync_run_once():
+    """Run the WLED state sync effect for one iteration"""
+    global effect
+    log.info("WLED State Sync: Running single iteration")
+    if effect:
+        await effect.run_once()
+        
 # Optional: Auto-trigger on state changes for even more responsiveness
 @state_trigger(f"{ENTITY_TO_MONITOR}")
 async def state_changed_trigger(var_name=None, value=None):
@@ -202,7 +209,7 @@ async def state_changed_trigger(var_name=None, value=None):
         # The effect's polling loop will pick up the change
         # This trigger just ensures minimal latency
         log.debug(f"State trigger fired: {var_name} = {value}")
-    else if STATECHANGE_RUN_ONCE:
+    elif STATECHANGE_RUN_ONCE == True:
         # If effect is not running, start it for one iteration
         log.info("State changed - starting effect for one iteration")
         await effect.run_once()
