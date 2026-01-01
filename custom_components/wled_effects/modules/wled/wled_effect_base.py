@@ -28,6 +28,9 @@ LED_BRIGHTNESS = DEFAULT_LED_BRIGHTNESS
 class WLEDEffectBase(ABC):
     """Base class for all WLED effects - handles device management"""
     
+    # Class attribute to indicate if effect requires state provider
+    REQUIRES_STATE_PROVIDER = False
+    
     def __init__(self, task_manager, logger, http_client, auto_detect=True, 
                  segment_id=None, start_led=None, stop_led=None, led_brightness=None):
         """

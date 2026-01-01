@@ -233,7 +233,6 @@ class WLEDEffectManager:
         
         Args:
             **kwargs: Additional arguments for effect constructor
-                     (e.g., state_provider for StateSyncEffect)
         """
         if self.effect_class is None:
             log.error("No effect class loaded")
@@ -243,11 +242,20 @@ class WLEDEffectManager:
             # Store kwargs for re-creation if needed
             self.effect_args = kwargs
             
-            # Create effect instance
             # Base args are always: task_manager, logger, http_client
             base_args = [self.task_mgr, self.logger, self.http_client]
             
-            # Add any additional positional/keyword arguments
+            # Check if effect requires state provider using class attribute
+            if getattr(self.effect_class, 'REQUIRES_STATE_PROVIDER', False):
+                if 'state_provider' in kwargs:
+                    base_args.append(kwargs.pop('state_provider'))
+                elif self.state_provider:
+                    base_args.append(self.state_provider)
+                else:
+                    log.error(f"Effect {self.effect_class.__name__} requires a state_provider")
+                    return False
+            
+            # Create effect instance with base args and remaining kwargs
             self.effect = self.effect_class(*base_args, **kwargs)
             
             log.info(f"Created effect instance: {self.effect.get_effect_name()}")

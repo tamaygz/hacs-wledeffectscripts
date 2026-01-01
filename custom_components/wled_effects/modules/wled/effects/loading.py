@@ -5,7 +5,10 @@ LEDs fade in sequentially from first to last, then restart
 
 from wled.wled_effect_base import (
     WLEDEffectBase, 
-    DEFAULT_LED_BRIGHTNESS
+    DEFAULT_LED_BRIGHTNESS,
+    DEFAULT_SEGMENT_ID,
+    DEFAULT_START_LED,
+    DEFAULT_STOP_LED
 )
 
 
@@ -19,6 +22,39 @@ LOADING_TRAIL_LENGTH = 5       # Number of LEDs in the fading trail (0 = no trai
 
 class LoadingEffect(WLEDEffectBase):
     """Sequential LED fade-in effect that loops continuously"""
+    
+    def __init__(self, task_manager, logger, http_client, auto_detect=True,
+                 segment_id=None, start_led=None, stop_led=None, led_brightness=None):
+        # Manually initialize all base class attributes (pyscript doesn't fully support super())
+        self.task = task_manager
+        self.log = logger
+        self.http = http_client
+        
+        # Auto-detection settings
+        self.auto_detect_enabled = auto_detect
+        self.device_config = None
+        self._auto_detected = False
+        
+        # Configuration
+        self.segment_id = segment_id if segment_id is not None else DEFAULT_SEGMENT_ID
+        self.start_led = start_led if start_led is not None else DEFAULT_START_LED
+        self.stop_led = stop_led if stop_led is not None else DEFAULT_STOP_LED
+        self.led_brightness = led_brightness if led_brightness is not None else DEFAULT_LED_BRIGHTNESS
+        
+        # Store manual overrides
+        self._manual_segment_id = segment_id is not None
+        self._manual_start_led = start_led is not None
+        self._manual_stop_led = stop_led is not None
+        
+        # State
+        self.running = False
+        self.run_once_mode = False
+        self.active_tasks = set()
+        
+        # Diagnostics
+        self.command_count = 0
+        self.success_count = 0
+        self.fail_count = 0
     
     def get_effect_name(self):
         return "Loading Effect"
