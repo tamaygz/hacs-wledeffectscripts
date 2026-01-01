@@ -31,6 +31,9 @@ class WLEDEffectBase(ABC):
     # Class attribute to indicate if effect requires state provider
     REQUIRES_STATE_PROVIDER = False
     
+    # Class-level instance counter for unique task names
+    _instance_counter = 0
+    
     def __init__(self, task_manager, logger, http_client, auto_detect=True, 
                  segment_id=None, start_led=None, stop_led=None, led_brightness=None):
         """
@@ -46,6 +49,10 @@ class WLEDEffectBase(ABC):
             stop_led: Manual stop LED override (None = use auto-detect or default)
             led_brightness: Manual brightness override (None = use default)
         """
+        # Assign unique instance ID for this effect
+        WLEDEffectBase._instance_counter += 1
+        self.instance_id = WLEDEffectBase._instance_counter
+        
         self.task = task_manager
         self.log = logger
         self.http = http_client
@@ -298,9 +305,10 @@ class WLEDEffectBase(ABC):
             await self.blackout_segment()
             self.log.info("Blackout complete")
             
-            # Start effect task
-            self.log.info(f"Creating {self.get_effect_name()} task...")
-            await self.task.create_task("wled_effect_main", self.run_effect())
+            # Start effect task with unique name
+            task_name = f"wled_effect_{self.instance_id}_main"
+            self.log.info(f"Creating {self.get_effect_name()} task ({task_name})...")
+            await self.task.create_task(task_name, self.run_effect())
         
         self.log.info(f"{self.get_effect_name()} started")
     
@@ -335,7 +343,8 @@ class WLEDEffectBase(ABC):
         self.running = False
         
         # Kill main effect task
-        self.task.kill_task("wled_effect_main")
+        task_name = f"wled_effect_{self.instance_id}_main"
+        self.task.kill_task(task_name)
         
         # Kill all active tasks
         for task_name in list(self.active_tasks):

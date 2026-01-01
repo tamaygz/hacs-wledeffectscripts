@@ -185,6 +185,10 @@ class WLEDEffectManager:
         self.trigger_attribute = None
         self.trigger_on_change = False
         
+        # Track all started effects by name for proper cleanup and targeting
+        self.started_effects = {}  # {effect_name: effect_instance}
+        self.effect_counter = 0  # For auto-generated names
+        
         # Shared resources
         self.task_mgr = PyscriptTaskManager()
         self.http_client = PyscriptHTTPClient()
@@ -291,13 +295,17 @@ class WLEDEffectManager:
         log.info(f"Configured trigger for {trigger_desc} (run_on_change={run_on_change})")
     
     async def start_effect(self):
-        """Start the effect"""
-        if self.effect is None:
+        """Start the most recently configured effect"""
+        return await self.start_effect_instance(self.effect)
+    
+    async def start_effect_instance(self, effect):
+        """Start a specific effect instance"""
+        if effect is None:
             log.error("No effect instance available")
             return False
         
         try:
-            await self.effect.start()
+            await effect.start()
             return True
         except Exception as e:
             log.error(f"Error starting effect: {e}")
@@ -306,29 +314,37 @@ class WLEDEffectManager:
             return False
     
     async def stop_effect(self):
-        """Stop the effect"""
-        if self.effect is None:
+        """Stop the most recently configured effect"""
+        return await self.stop_effect_instance(self.effect)
+    
+    async def stop_effect_instance(self, effect):
+        """Stop a specific effect instance"""
+        if effect is None:
             log.warning("No effect instance to stop")
             return False
         
         try:
-            await self.effect.stop()
+            await effect.stop()
             return True
         except Exception as e:
             log.error(f"Error stopping effect: {e}")
             return False
     
     async def stop_all(self):
-        """Stop effect and kill all spawned tasks"""
-        stopped_effect = False
+        """Stop ALL effects and kill all spawned tasks"""
+        stopped_count = 0
         
-        # Stop the current effect if running
-        if self.effect is not None:
+        # Stop ALL tracked effects
+        for effect_name, effect in list(self.started_effects.items()):
             try:
-                await self.effect.stop()
-                stopped_effect = True
+                log.info(f"Stopping effect '{effect_name}' (instance {effect.instance_id})")
+                await effect.stop()
+                stopped_count += 1
             except Exception as e:
-                log.error(f"Error stopping effect: {e}")
+                log.error(f"Error stopping effect '{effect_name}': {e}")
+        
+        # Clear the dict
+        self.started_effects.clear()
         
         # Kill all tasks
         killed_count = self.task_mgr.kill_all_tasks()
@@ -339,17 +355,21 @@ class WLEDEffectManager:
         except Exception as e:
             log.warning(f"Error cleaning up HTTP client: {e}")
         
-        log.info(f"Stop all: Effect stopped={stopped_effect}, Tasks killed={killed_count}")
+        log.info(f"Stop all: {stopped_count} effects stopped, {killed_count} tasks killed")
         return True
     
     async def run_once_effect(self):
-        """Run effect once"""
-        if self.effect is None:
+        """Run the most recently configured effect once"""
+        return await self.run_once_effect_instance(self.effect)
+    
+    async def run_once_effect_instance(self, effect):
+        """Run a specific effect instance once"""
+        if effect is None:
             log.error("No effect instance available")
             return False
         
         try:
-            await self.effect.run_once()
+            await effect.run_once()
             return True
         except Exception as e:
             log.error(f"Error running effect once: {e}")
@@ -388,6 +408,7 @@ manager = WLEDEffectManager()
 @service
 def wled_effect_configure(
     effect: str = "Segment Fade",
+    effect_name: str = None,
     state_entity: str = None,
     state_attribute: str = None,
     trigger_entity: str = None,
@@ -415,6 +436,11 @@ fields:
           - "Segment Fade"
           - "Loading"
           - "State Sync"
+  effect_name:
+    description: Name for this effect instance (for targeting specific effects). Auto-generated if not provided.
+    example: "rainbow_seg1"
+    selector:
+      text:
   state_entity:
     description: Entity ID for state provider (required for State Sync effect)
     example: "sensor.living_room_temperature"
@@ -480,7 +506,12 @@ fields:
 """
     global manager
     
-    log.info(f"Configuring effect: {effect}")
+    # Generate effect name if not provided
+    if not effect_name:
+        manager.effect_counter += 1
+        effect_name = f"effect_{manager.effect_counter}"
+    
+    log.info(f"Configuring effect '{effect_name}': {effect}")
     
     # Load effect class
     if not manager.load_effect_class(effect):
@@ -516,52 +547,111 @@ fields:
     
     # Create effect instance
     if manager.create_effect(**effect_kwargs):
-        log.info("Effect configured successfully")
+        # Store with name for targeting
+        manager.started_effects[effect_name] = manager.effect
+        log.info(f"Effect '{effect_name}' configured successfully (segment={manager.effect.segment_id})")
     else:
         log.error("Failed to create effect instance")
 
 
 @service
-async def wled_effect_start():
+async def wled_effect_start(effect_name: str = None):
     """yaml
 name: Start WLED Effect
-description: Start the currently configured WLED effect in continuous loop mode
+description: Start the configured WLED effect in continuous loop mode
+fields:
+  effect_name:
+    description: Name of specific effect to start (leave empty for most recently configured)
+    example: "rainbow_seg1"
+    selector:
+      text:
 """
     global manager
     
-    log.info("Starting WLED effect...")
-    if await manager.start_effect():
-        log.info("Effect started successfully")
+    # Determine which effect to start
+    if effect_name:
+        if effect_name not in manager.started_effects:
+            log.error(f"Effect '{effect_name}' not found. Configure it first.")
+            return
+        effect = manager.started_effects[effect_name]
+        log.info(f"Starting effect '{effect_name}'...")
+    else:
+        if manager.effect is None:
+            log.error("No effect configured")
+            return
+        effect = manager.effect
+        log.info("Starting most recently configured effect...")
+    
+    if await manager.start_effect_instance(effect):
+        log.info(f"Effect '{effect_name or 'default'}' started successfully")
     else:
         log.error("Failed to start effect")
 
 
 @service
-async def wled_effect_stop():
+async def wled_effect_stop(effect_name: str = None):
     """yaml
 name: Stop WLED Effect
 description: Stop the currently running WLED effect
+fields:
+  effect_name:
+    description: Name of specific effect to stop (leave empty for most recently configured)
+    example: "rainbow_seg1"
+    selector:
+      text:
 """
     global manager
     
-    log.info("Stopping WLED effect...")
-    if await manager.stop_effect():
-        log.info("Effect stopped successfully")
+    # Determine which effect to stop
+    if effect_name:
+        if effect_name not in manager.started_effects:
+            log.error(f"Effect '{effect_name}' not found")
+            return
+        effect = manager.started_effects[effect_name]
+        log.info(f"Stopping effect '{effect_name}'...")
     else:
-        log.warning("Effect stop had issues or no effect was running")
+        if manager.effect is None:
+            log.warning("No effect configured")
+            return
+        effect = manager.effect
+        log.info("Stopping most recently configured effect...")
+    
+    if await manager.stop_effect_instance(effect):
+        log.info(f"Effect '{effect_name or 'default'}' stopped successfully")
+    else:
+        log.warning("Effect stop had issues")
 
 
 @service
-async def wled_effect_run_once():
+async def wled_effect_run_once(effect_name: str = None):
     """yaml
 name: Run WLED Effect Once
 description: Run the configured WLED effect once (single iteration)
+fields:
+  effect_name:
+    description: Name of specific effect to run (leave empty for most recently configured)
+    example: "rainbow_seg1"
+    selector:
+      text:
 """
     global manager
     
-    log.info("Running WLED effect once...")
-    if await manager.run_once_effect():
-        log.info("Effect completed single run")
+    # Determine which effect to run
+    if effect_name:
+        if effect_name not in manager.started_effects:
+            log.error(f"Effect '{effect_name}' not found. Configure it first.")
+            return
+        effect = manager.started_effects[effect_name]
+        log.info(f"Running effect '{effect_name}' once...")
+    else:
+        if manager.effect is None:
+            log.error("No effect configured")
+            return
+        effect = manager.effect
+        log.info("Running most recently configured effect once...")
+    
+    if await manager.run_once_effect_instance(effect):
+        log.info(f"Effect '{effect_name or 'default'}' completed single run")
     else:
         log.error("Failed to run effect once")
 
@@ -585,45 +675,41 @@ description: Stop effect and kill all spawned background tasks, cleanup resource
 def wled_effect_status():
     """yaml
 name: Get WLED Effect Status
-description: Get current status of the configured effect (returns structured data)
+description: Get current status of all configured effects (returns structured data)
 """
     global manager
     
     status = {
-        "configured": manager.effect is not None,
-        "effect_name": None,
-        "running": False,
-        "trigger_entity": None,
-        "trigger_attribute": None,
-        "state_entity": None,
-        "state_attribute": None
+        "effects": {},
+        "effect_count": len(manager.started_effects)
     }
     
-    if manager.effect is None:
-        log.info("No effect configured")
-        return status
+    # Add info for each effect
+    for effect_name, effect in manager.started_effects.items():
+        status["effects"][effect_name] = {
+            "effect_type": effect.get_effect_name(),
+            "running": effect.running,
+            "instance_id": effect.instance_id,
+            "segment_id": effect.segment_id,
+            "start_led": effect.start_led,
+            "stop_led": effect.stop_led
+        }
     
-    status["effect_name"] = manager.effect.get_effect_name()
-    status["running"] = manager.effect.running
-    status["trigger_entity"] = manager.trigger_entity
-    status["trigger_attribute"] = manager.trigger_attribute
+    # Log summary
+    log.info(f"Active effects: {len(manager.started_effects)}")
+    for effect_name, effect in manager.started_effects.items():
+        log.info(f"  - '{effect_name}': {effect.get_effect_name()} (segment {effect.segment_id}, running={effect.running})")
+    
+    if manager.trigger_entity:
+        trigger_desc = f"{manager.trigger_entity}"
+        if manager.trigger_attribute:
+            trigger_desc += f".{manager.trigger_attribute}"
+        log.info(f"Trigger: {trigger_desc}")
     
     if manager.state_provider:
-        status["state_entity"] = manager.state_provider.entity_id
-        status["state_attribute"] = manager.state_provider.attribute
-    
-    # Log for debugging
-    log.info(f"Effect: {status['effect_name']}")
-    log.info(f"Running: {status['running']}")
-    trigger_desc = f"{status['trigger_entity'] or 'None'}"
-    if status['trigger_attribute']:
-        trigger_desc += f".{status['trigger_attribute']}"
-    log.info(f"Trigger: {trigger_desc}")
-    
-    if status['state_entity']:
-        state_desc = status['state_entity']
-        if status['state_attribute']:
-            state_desc += f".{status['state_attribute']}"
+        state_desc = manager.state_provider.entity_id
+        if manager.state_provider.attribute:
+            state_desc += f".{manager.state_provider.attribute}"
         log.info(f"State Provider: {state_desc}")
     
     return status
