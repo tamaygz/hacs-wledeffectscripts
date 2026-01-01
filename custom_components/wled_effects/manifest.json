@@ -1,6 +1,7 @@
 {
   "domain": "wled_effects",
   "name": "WLED Effect pyScripts",
+  "config_flow": true,
   "documentation": "https://github.com/tamaygz/hacs-wledeffectscripts",
   "issue_tracker": "https://github.com/tamaygz/hacs-wledeffectscripts/issues",
   "codeowners": ["@tamaygz"],
