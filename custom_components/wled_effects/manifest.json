@@ -6,6 +6,6 @@
   "issue_tracker": "https://github.com/tamaygz/hacs-wledeffectscripts/issues",
   "codeowners": ["@tamaygz"],
   "requirements": [],
-  "version": "0.0.1",
+  "version": "0.0.5",
   "iot_class": "local_polling"
 }
