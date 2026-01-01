@@ -1,0 +1,129 @@
+# WLED Effects Service Definitions for Home Assistant UI
+# Place this file in your pyscript/apps/wledeffects/ directory
+# alongside wledtaskservice.py for enhanced UI support
+
+wled_effect_configure:
+  name: Configure WLED Effect
+  description: Load and configure a WLED effect with optional state monitoring and triggers
+  fields:
+    effect_module:
+      name: Effect Module
+      description: Python module path (e.g., "wled.effects.rainbow_wave")
+      required: true
+      example: "wled.effects.segment_fade"
+      selector:
+        text:
+    effect_class:
+      name: Effect Class
+      description: Effect class name (e.g., "RainbowWaveEffect")
+      required: true
+      example: "SegmentFadeEffect"
+      selector:
+        text:
+    state_entity:
+      name: State Entity
+      description: Entity ID for state provider (required for StateSyncEffect)
+      required: false
+      example: "sensor.living_room_temperature"
+      selector:
+        entity:
+    state_attribute:
+      name: State Attribute
+      description: Attribute name for state provider (None = use entity state)
+      required: false
+      example: "temperature"
+      selector:
+        text:
+    trigger_entity:
+      name: Trigger Entity
+      description: Entity to monitor for triggering effect (None = no trigger)
+      required: false
+      example: "binary_sensor.motion_detected"
+      selector:
+        entity:
+    trigger_attribute:
+      name: Trigger Attribute
+      description: Attribute to monitor for trigger (None = monitor state)
+      required: false
+      example: "battery_level"
+      selector:
+        text:
+    trigger_on_change:
+      name: Run on Change
+      description: Run effect once when trigger entity changes
+      required: false
+      default: true
+      selector:
+        boolean:
+    auto_detect:
+      name: Auto Detect
+      description: Enable auto-detection of LED configuration from WLED device
+      required: false
+      default: true
+      selector:
+        boolean:
+    segment_id:
+      name: Segment ID
+      description: Manual segment ID override (None = auto-detect)
+      required: false
+      example: 0
+      selector:
+        number:
+          min: 0
+          max: 31
+          mode: box
+    start_led:
+      name: Start LED
+      description: Manual start LED override (None = auto-detect)
+      required: false
+      example: 0
+      selector:
+        number:
+          min: 0
+          max: 1000
+          mode: box
+    stop_led:
+      name: Stop LED
+      description: Manual stop LED override (None = auto-detect)
+      required: false
+      example: 60
+      selector:
+        number:
+          min: 0
+          max: 1000
+          mode: box
+    led_brightness:
+      name: LED Brightness
+      description: Manual brightness override (None = use default/auto)
+      required: false
+      example: 128
+      selector:
+        number:
+          min: 0
+          max: 255
+          mode: slider
+
+wled_effect_start:
+  name: Start WLED Effect
+  description: Start the currently configured WLED effect in continuous loop mode
+  fields: {}
+
+wled_effect_stop:
+  name: Stop WLED Effect
+  description: Stop the currently running WLED effect
+  fields: {}
+
+wled_effect_run_once:
+  name: Run WLED Effect Once
+  description: Run the configured WLED effect once (single iteration)
+  fields: {}
+
+wled_effect_stop_all:
+  name: Stop All WLED Tasks
+  description: Stop effect and kill all spawned background tasks, cleanup resources
+  fields: {}
+
+wled_effect_status:
+  name: Get WLED Effect Status
+  description: Get current status of the configured effect (returns structured data)
+  fields: {}

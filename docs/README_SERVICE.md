@@ -10,15 +10,18 @@
 ✅ **Configurable Parameters** - Pass effect-specific arguments via service calls
 ✅ **Auto-Detection Support** - Optionally enable/disable auto-detection
 ✅ **Manual Overrides** - Override segment ID, LED range, brightness
-✅ **State Triggers** - Automatically trigger effects on entity state changes
+✅ **State Triggers** - Automatically trigger effects on entity state changes (supports state or state+attribute)
 ✅ **State Providers** - Connect effects to Home Assistant entities (for StateSyncEffect)
-✅ **Multiple Service Actions** - start, stop, run_once, status, configure
+✅ **Multiple Service Actions** - start, stop, run_once, stop_all, status, configure
+✅ **Full UI Support** - Proper Home Assistant service UI with type hints and descriptions
+✅ **Return Values** - Status service returns structured data for use in automations
 
 ## Installation
 
 1. **Install Pyscript** (via HACS if not already installed)
 2. **Copy** `wledtaskservice.py` to `<config>/pyscript/` directory
-3. **Restart** Home Assistant or reload Pyscript
+3. **Optional**: Copy `services.yaml` to the same directory for enhanced UI support
+4. **Restart** Home Assistant or reload Pyscript
 
 ## Services
 
@@ -32,6 +35,7 @@ Configure which effect to use and its parameters.
 - `state_entity` (string, optional) - Entity for state provider (StateSyncEffect only)
 - `state_attribute` (string, optional) - Attribute to monitor (None = use state)
 - `trigger_entity` (string, optional) - Entity to trigger on changes
+- `trigger_attribute` (string, optional) - Attribute to monitor for trigger (None = monitor state)
 - `trigger_on_change` (bool) - Run effect once when trigger fires (default: true)
 - `auto_detect` (bool) - Enable auto-detection (default: true)
 - `segment_id` (int, optional) - Manual segment ID
@@ -41,19 +45,59 @@ Configure which effect to use and its parameters.
 
 ### `pyscript.wled_effect_start`
 
-Start the configured effect (runs continuously until stopped).
+Start the configured effect (runs continuously until stopped). No arguments required.
 
 ### `pyscript.wled_effect_stop`
 
-Stop the currently running effect.
+Stop the currently running effect. No arguments required.
 
 ### `pyscript.wled_effect_run_once`
 
-Run the effect once (single iteration).
+Run the effect once (single iteration). No arguments required.
+
+### `pyscript.wled_effect_stop_all`
+
+Stop the currently running effect and kill all spawned background tasks, cleanup all resources. No arguments required.
 
 ### `pyscript.wled_effect_status`
 
-Log current effect status to Home Assistant logs.
+Get current effect status. **Returns structured data** that can be used in templates and automations:
+
+**Return Value:**
+```python
+{
+  "configured": bool,        # Whether an effect is configured
+  "effect_name": str,        # Name of the effect (or None)
+  "running": bool,           # Whether effect is currently running
+  "trigger_entity": str,     # Entity being monitored for triggers (or None)
+  "trigger_attribute": str,  # Attribute being monitored (or None)
+  "state_entity": str,       # Entity providing state data (or None)
+  "state_attribute": str     # Attribute providing state data (or None)
+}
+```
+
+**Usage in Automation:**
+```yaml
+- service: pyscript.wled_effect_status
+  response_variable: effect_status
+
+- condition: template
+  value_template: "{{ effect_status.running == false }}"
+```
+
+## UI Support
+
+Pyscript automatically generates service UI from:
+1. **Type hints** in service function signatures
+2. **Docstrings** in service functions
+3. **services.yaml** file (optional, for enhanced UI)
+
+The included `services.yaml` provides:
+- User-friendly field names
+- Detailed descriptions
+- Input selectors (entity pickers, number sliders, text boxes)
+- Example values
+- Default values
 
 ## Usage Examples
 

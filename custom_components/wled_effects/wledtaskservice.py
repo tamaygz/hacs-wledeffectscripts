@@ -378,23 +378,85 @@ def wled_effect_configure(
     stop_led: int = None,
     led_brightness: int = None
 ):
-    """
-    Configure a WLED effect
-    
-    Args:
-        effect_module: Python module path (e.g., "wled.effects.rainbow_wave")
-        effect_class: Effect class name (e.g., "RainbowWaveEffect")
-        state_entity: Entity ID for state provider (StateSyncEffect only)
-        state_attribute: Attribute name for state provider (None = use state)
-        trigger_entity: Entity to trigger on changes (None = no trigger)
-        trigger_attribute: Attribute to monitor for trigger (None = monitor state)
-        trigger_on_change: Run effect once when trigger entity changes
-        auto_detect: Enable auto-detection of LED configuration
-        segment_id: Manual segment ID override (None = auto-detect)
-        start_led: Manual start LED override (None = auto-detect)
-        stop_led: Manual stop LED override (None = auto-detect)
-        led_brightness: Manual brightness override (None = use default)
-    """
+    """yaml
+name: Configure WLED Effect
+description: Load and configure a WLED effect with optional state monitoring and triggers
+fields:
+  effect_module:
+    description: Python module path (e.g., "wled.effects.rainbow_wave")
+    example: "wled.effects.segment_fade"
+    required: true
+    selector:
+      text:
+  effect_class:
+    description: Effect class name (e.g., "RainbowWaveEffect")
+    example: "SegmentFadeEffect"
+    required: true
+    selector:
+      text:
+  state_entity:
+    description: Entity ID for state provider (required for StateSyncEffect)
+    example: "sensor.living_room_temperature"
+    selector:
+      entity:
+  state_attribute:
+    description: Attribute name for state provider (None = use entity state)
+    example: "temperature"
+    selector:
+      text:
+  trigger_entity:
+    description: Entity to monitor for triggering effect (None = no trigger)
+    example: "binary_sensor.motion_detected"
+    selector:
+      entity:
+  trigger_attribute:
+    description: Attribute to monitor for trigger (None = monitor state)
+    example: "battery_level"
+    selector:
+      text:
+  trigger_on_change:
+    description: Run effect once when trigger entity changes
+    default: true
+    selector:
+      boolean:
+  auto_detect:
+    description: Enable auto-detection of LED configuration from WLED device
+    default: true
+    selector:
+      boolean:
+  segment_id:
+    description: Manual segment ID override (None = auto-detect)
+    example: 0
+    selector:
+      number:
+        min: 0
+        max: 31
+        mode: box
+  start_led:
+    description: Manual start LED override (None = auto-detect)
+    example: 0
+    selector:
+      number:
+        min: 0
+        max: 1000
+        mode: box
+  stop_led:
+    description: Manual stop LED override (None = auto-detect)
+    example: 60
+    selector:
+      number:
+        min: 0
+        max: 1000
+        mode: box
+  led_brightness:
+    description: Manual brightness override (None = use default/auto)
+    example: 128
+    selector:
+      number:
+        min: 0
+        max: 255
+        mode: slider
+"""
     global manager
     
     log.info(f"Configuring effect: {effect_class} from {effect_module}")
@@ -440,7 +502,10 @@ def wled_effect_configure(
 
 @service
 async def wled_effect_start():
-    """Start the configured WLED effect"""
+    """yaml
+name: Start WLED Effect
+description: Start the currently configured WLED effect in continuous loop mode
+"""
     global manager
     
     log.info("Starting WLED effect...")
@@ -452,7 +517,10 @@ async def wled_effect_start():
 
 @service
 async def wled_effect_stop():
-    """Stop the currently running WLED effect"""
+    """yaml
+name: Stop WLED Effect
+description: Stop the currently running WLED effect
+"""
     global manager
     
     log.info("Stopping WLED effect...")
@@ -464,7 +532,10 @@ async def wled_effect_stop():
 
 @service
 async def wled_effect_run_once():
-    """Run the configured WLED effect once"""
+    """yaml
+name: Run WLED Effect Once
+description: Run the configured WLED effect once (single iteration)
+"""
     global manager
     
     log.info("Running WLED effect once...")
@@ -476,7 +547,10 @@ async def wled_effect_run_once():
 
 @service
 async def wled_effect_stop_all():
-    """Stop effect and kill all spawned tasks"""
+    """yaml
+name: Stop All WLED Tasks
+description: Stop effect and kill all spawned background tasks, cleanup resources
+"""
     global manager
     
     log.info("Stopping all WLED effect tasks...")
@@ -488,30 +562,50 @@ async def wled_effect_stop_all():
 
 @service
 def wled_effect_status():
-    """Get status of current effect"""
+    """yaml
+name: Get WLED Effect Status
+description: Get current status of the configured effect (returns structured data)
+"""
     global manager
+    
+    status = {
+        "configured": manager.effect is not None,
+        "effect_name": None,
+        "running": False,
+        "trigger_entity": None,
+        "trigger_attribute": None,
+        "state_entity": None,
+        "state_attribute": None
+    }
     
     if manager.effect is None:
         log.info("No effect configured")
-        return
+        return status
     
-    effect_name = manager.effect.get_effect_name()
-    is_running = manager.effect.running
-    has_trigger = manager.trigger_entity is not None
-    
-    log.info(f"Effect: {effect_name}")
-    log.info(f"Running: {is_running}")
-    
-    trigger_desc = f"{manager.trigger_entity or 'None'}"
-    if manager.trigger_entity and manager.trigger_attribute:
-        trigger_desc += f".{manager.trigger_attribute}"
-    log.info(f"Trigger: {trigger_desc}")
+    status["effect_name"] = manager.effect.get_effect_name()
+    status["running"] = manager.effect.running
+    status["trigger_entity"] = manager.trigger_entity
+    status["trigger_attribute"] = manager.trigger_attribute
     
     if manager.state_provider:
-        state_desc = manager.state_provider.entity_id
-        if manager.state_provider.attribute:
-            state_desc += f".{manager.state_provider.attribute}"
+        status["state_entity"] = manager.state_provider.entity_id
+        status["state_attribute"] = manager.state_provider.attribute
+    
+    # Log for debugging
+    log.info(f"Effect: {status['effect_name']}")
+    log.info(f"Running: {status['running']}")
+    trigger_desc = f"{status['trigger_entity'] or 'None'}"
+    if status['trigger_attribute']:
+        trigger_desc += f".{status['trigger_attribute']}"
+    log.info(f"Trigger: {trigger_desc}")
+    
+    if status['state_entity']:
+        state_desc = status['state_entity']
+        if status['state_attribute']:
+            state_desc += f".{status['state_attribute']}"
         log.info(f"State Provider: {state_desc}")
+    
+    return status
 
 
 # Dynamic state trigger registration

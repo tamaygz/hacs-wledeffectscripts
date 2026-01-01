@@ -23,7 +23,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     source_dir = Path(__file__).parent
     modules_dir = source_dir / "modules"
     # toCopy = [modules_dir, source_dir / "wledtask.py", source_dir / "wledtask_sync.py", source_dir / "wledtaskservice.py"]
-    toCopy = [modules_dir, source_dir / "wledtaskservice.py"]
+    toCopy = [modules_dir, source_dir / "wledtaskservice.py", source_dir / "services.yaml"]
 
     # Create pyscript directory if it doesn't exist
     if not pyscript_dir.exists():
