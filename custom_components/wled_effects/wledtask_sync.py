@@ -10,8 +10,10 @@ import asyncio
 
 
 # Configuration - Change these to match your setup
-ENTITY_TO_MONITOR = "cover.curtain_comedor"  # Entity to monitor
-ATTRIBUTE_NAME = "current_position"  # Set to attribute name if monitoring an attribute, or None for state
+ENTITY_TO_MONITOR = "sensor.curtainopenpercentage"  # Entity to monitor
+ATTRIBUTE_NAME = None  # Set to attribute name if monitoring an attribute, or None for state
+# ENTITY_TO_MONITOR = "cover.curtain_comedor"  # Entity to monitor
+# ATTRIBUTE_NAME = "current_position"  # Set to attribute name if monitoring an attribute, or None for state
 # Examples:
 # ENTITY_TO_MONITOR = "cover.living_room_curtain" with ATTRIBUTE_NAME = "current_position"
 # ENTITY_TO_MONITOR = "media_player.living_room" with ATTRIBUTE_NAME = "volume_level"
