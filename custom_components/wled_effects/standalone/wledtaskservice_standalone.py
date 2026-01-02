@@ -189,7 +189,7 @@ class WLEDEffectManagerStandalone:
             traceback.print_exc()
             return None
     
-    def create_effect(self, effect_type, effect_name=None, state_provider=None, **kwargs):
+    def create_effect(self, effect_type, effect_name=None, state_provider=None, effect_config=None, **kwargs):
         """Create and configure an effect instance"""
         if not effect_name:
             self.effect_counter += 1
@@ -213,6 +213,11 @@ class WLEDEffectManagerStandalone:
             
             # Create instance
             effect = effect_class(*base_args, **kwargs)
+            
+            # Apply effect_config if provided
+            if effect_config:
+                effect.config = effect_config
+            
             self.effects[effect_name] = effect
             
             self.logger.info(f"Created effect '{effect_name}': {effect.get_effect_name()} (segment={effect.segment_id})")
@@ -351,6 +356,8 @@ Examples:
                                    help='Disable auto-detection')
     configure_parser.add_argument('--state-value', type=float, default=50.0,
                                    help='State value for State Sync effect (0-100, default: 50)')
+    configure_parser.add_argument('--effect-config', type=str,
+                                   help='Effect-specific configuration as JSON string (e.g. \'{"anim_mode":"Single"}\' )')
     configure_parser.add_argument('--start', action='store_true',
                                    help='Start the effect immediately after configuring')
     configure_parser.add_argument('--run-once', action='store_true',
@@ -382,6 +389,8 @@ Examples:
                             help='Disable auto-detection')
     run_parser.add_argument('--state-value', type=float, default=50.0,
                             help='State value for State Sync effect (0-100, default: 50)')
+    run_parser.add_argument('--effect-config', type=str,
+                            help='Effect-specific configuration as JSON string')
     run_parser.add_argument('--duration', type=float, 
                             help='Run for specified seconds then exit (for continuous effects)')
     run_parser.add_argument('--once', action='store_true',
@@ -422,10 +431,21 @@ Examples:
             if args.effect == 'State Sync':
                 state_provider = StandaloneStateProvider(args.state_value)
             
+            # Parse effect config if provided
+            effect_config = None
+            if args.effect_config:
+                try:
+                    import json
+                    effect_config = json.loads(args.effect_config)
+                except Exception as e:
+                    print(f"Error parsing effect_config: {e}")
+                    sys.exit(1)
+            
             effect_name = manager.create_effect(
                 args.effect, 
                 args.name,
                 state_provider=state_provider,
+                effect_config=effect_config,
                 **kwargs
             )
             
@@ -470,10 +490,21 @@ Examples:
             if args.effect == 'State Sync':
                 state_provider = StandaloneStateProvider(args.state_value)
             
+            # Parse effect config if provided
+            effect_config = None
+            if args.effect_config:
+                try:
+                    import json
+                    effect_config = json.loads(args.effect_config)
+                except Exception as e:
+                    print(f"Error parsing effect_config: {e}")
+                    sys.exit(1)
+            
             effect_name = manager.create_effect(
                 args.effect, 
                 args.name,
                 state_provider=state_provider,
+                effect_config=effect_config,
                 **kwargs
             )
             

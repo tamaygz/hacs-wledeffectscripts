@@ -682,6 +682,8 @@ fields:
         
         # Build kwargs
         effect_kwargs = {}
+        if effect_config:
+            effect_kwargs["effect_config"] = effect_config
         if manager.state_provider:
             effect_kwargs["state_provider"] = manager.state_provider
         if auto_detect is not None:
@@ -871,6 +873,8 @@ fields:
         
         # Build kwargs
         effect_kwargs = {}
+        if effect_config:
+            effect_kwargs["effect_config"] = effect_config
         if manager.state_provider:
             effect_kwargs["state_provider"] = manager.state_provider
         if auto_detect is not None:
