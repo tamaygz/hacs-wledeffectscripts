@@ -555,35 +555,150 @@ fields:
 
 
 @service
-async def wled_effect_start(effect_name: str = None):
+async def wled_effect_start(
+    effect_name: str = None,
+    effect: str = None,
+    state_entity: str = None,
+    state_attribute: str = None,
+    auto_detect: bool = True,
+    segment_id: int = None,
+    start_led: int = None,
+    stop_led: int = None,
+    led_brightness: int = None
+):
     """yaml
 name: Start WLED Effect
-description: Start the configured WLED effect in continuous loop mode
+description: Start a WLED effect in continuous loop mode. Can either reference a pre-configured effect or configure+start in one call.
 fields:
   effect_name:
-    description: Name of specific effect to start (leave empty for most recently configured)
+    description: Name of specific effect to start (if already configured). Leave empty to configure inline.
     example: "rainbow_seg1"
     selector:
       text:
+  effect:
+    description: Effect type to configure and start (if not using pre-configured effect)
+    example: "Rainbow Wave"
+    selector:
+      select:
+        options:
+          - "Rainbow Wave"
+          - "Segment Fade"
+          - "Loading"
+          - "State Sync"
+  state_entity:
+    description: Entity ID for state provider (for State Sync effect)
+    example: "sensor.living_room_temperature"
+    selector:
+      entity:
+  state_attribute:
+    description: Attribute name for state provider (None = use entity state)
+    example: "temperature"
+    selector:
+      text:
+  auto_detect:
+    description: Enable auto-detection of LED configuration from WLED device
+    default: true
+    selector:
+      boolean:
+  segment_id:
+    description: Manual segment ID override (None = auto-detect)
+    example: 0
+    selector:
+      number:
+        min: 0
+        max: 31
+        mode: box
+  start_led:
+    description: Manual start LED override (None = auto-detect)
+    example: 0
+    selector:
+      number:
+        min: 0
+        max: 1000
+        mode: box
+  stop_led:
+    description: Manual stop LED override (None = auto-detect)
+    example: 60
+    selector:
+      number:
+        min: 0
+        max: 1000
+        mode: box
+  led_brightness:
+    description: Manual brightness override (None = use default/auto)
+    example: 128
+    selector:
+      number:
+        min: 0
+        max: 255
+        mode: slider
 """
     global manager
     
-    # Determine which effect to start
-    if effect_name:
-        if effect_name not in manager.started_effects:
-            log.error(f"Effect '{effect_name}' not found. Configure it first.")
-            return
-        effect = manager.started_effects[effect_name]
-        log.info(f"Starting effect '{effect_name}'...")
-    else:
-        if manager.effect is None:
-            log.error("No effect configured")
-            return
-        effect = manager.effect
-        log.info("Starting most recently configured effect...")
+    # Case 1: Reference existing configured effect
+    if effect_name and effect_name in manager.started_effects:
+        effect_inst = manager.started_effects[effect_name]
+        log.info(f"Starting pre-configured effect '{effect_name}'...")
+        
+        if await manager.start_effect_instance(effect_inst):
+            log.info(f"Effect '{effect_name}' started successfully")
+        else:
+            log.error("Failed to start effect")
+        return
     
-    if await manager.start_effect_instance(effect):
-        log.info(f"Effect '{effect_name or 'default'}' started successfully")
+    # Case 2: Configure and start inline
+    if effect:
+        # Generate name if not provided
+        if not effect_name:
+            manager.effect_counter += 1
+            effect_name = f"effect_{manager.effect_counter}"
+        
+        log.info(f"Configuring and starting effect '{effect_name}': {effect}")
+        
+        # Load effect class
+        if not manager.load_effect_class(effect):
+            log.error("Failed to load effect")
+            return
+        
+        # Setup state provider if needed
+        if state_entity:
+            manager.setup_state_provider(state_entity, state_attribute)
+        
+        # Build kwargs
+        effect_kwargs = {}
+        if manager.state_provider:
+            effect_kwargs["state_provider"] = manager.state_provider
+        if auto_detect is not None:
+            effect_kwargs["auto_detect"] = auto_detect
+        if segment_id is not None:
+            effect_kwargs["segment_id"] = segment_id
+        if start_led is not None:
+            effect_kwargs["start_led"] = start_led
+        if stop_led is not None:
+            effect_kwargs["stop_led"] = stop_led
+        if led_brightness is not None:
+            effect_kwargs["led_brightness"] = led_brightness
+        
+        # Create and start
+        if manager.create_effect(**effect_kwargs):
+            manager.started_effects[effect_name] = manager.effect
+            
+            if await manager.start_effect_instance(manager.effect):
+                log.info(f"Effect '{effect_name}' configured and started successfully")
+            else:
+                log.error("Failed to start effect")
+        else:
+            log.error("Failed to create effect")
+        return
+    
+    # Case 3: Start most recently configured effect
+    if manager.effect is None:
+        log.error("No effect configured or specified")
+        return
+    
+    log.info("Starting most recently configured effect...")
+    if await manager.start_effect_instance(manager.effect):
+        log.info("Effect started successfully")
     else:
         log.error("Failed to start effect")
 
@@ -623,35 +738,150 @@ fields:
 
 
 @service
-async def wled_effect_run_once(effect_name: str = None):
+async def wled_effect_run_once(
+    effect_name: str = None,
+    effect: str = None,
+    state_entity: str = None,
+    state_attribute: str = None,
+    auto_detect: bool = True,
+    segment_id: int = None,
+    start_led: int = None,
+    stop_led: int = None,
+    led_brightness: int = None
+):
     """yaml
 name: Run WLED Effect Once
-description: Run the configured WLED effect once (single iteration)
+description: Run a WLED effect once (single iteration). Can either reference a pre-configured effect or configure+run in one call.
 fields:
   effect_name:
-    description: Name of specific effect to run (leave empty for most recently configured)
+    description: Name of specific effect to run (if already configured). Leave empty to configure inline.
     example: "rainbow_seg1"
     selector:
       text:
+  effect:
+    description: Effect type to configure and run once (if not using pre-configured effect)
+    example: "Loading"
+    selector:
+      select:
+        options:
+          - "Rainbow Wave"
+          - "Segment Fade"
+          - "Loading"
+          - "State Sync"
+  state_entity:
+    description: Entity ID for state provider (for State Sync effect)
+    example: "sensor.living_room_temperature"
+    selector:
+      entity:
+  state_attribute:
+    description: Attribute name for state provider (None = use entity state)
+    example: "temperature"
+    selector:
+      text:
+  auto_detect:
+    description: Enable auto-detection of LED configuration from WLED device
+    default: true
+    selector:
+      boolean:
+  segment_id:
+    description: Manual segment ID override (None = auto-detect)
+    example: 0
+    selector:
+      number:
+        min: 0
+        max: 31
+        mode: box
+  start_led:
+    description: Manual start LED override (None = auto-detect)
+    example: 0
+    selector:
+      number:
+        min: 0
+        max: 1000
+        mode: box
+  stop_led:
+    description: Manual stop LED override (None = auto-detect)
+    example: 60
+    selector:
+      number:
+        min: 0
+        max: 1000
+        mode: box
+  led_brightness:
+    description: Manual brightness override (None = use default/auto)
+    example: 128
+    selector:
+      number:
+        min: 0
+        max: 255
+        mode: slider
 """
     global manager
     
-    # Determine which effect to run
-    if effect_name:
-        if effect_name not in manager.started_effects:
-            log.error(f"Effect '{effect_name}' not found. Configure it first.")
-            return
-        effect = manager.started_effects[effect_name]
-        log.info(f"Running effect '{effect_name}' once...")
-    else:
-        if manager.effect is None:
-            log.error("No effect configured")
-            return
-        effect = manager.effect
-        log.info("Running most recently configured effect once...")
+    # Case 1: Reference existing configured effect
+    if effect_name and effect_name in manager.started_effects:
+        effect_inst = manager.started_effects[effect_name]
+        log.info(f"Running pre-configured effect '{effect_name}' once...")
+        
+        if await manager.run_once_effect_instance(effect_inst):
+            log.info(f"Effect '{effect_name}' completed single run")
+        else:
+            log.error("Failed to run effect once")
+        return
     
-    if await manager.run_once_effect_instance(effect):
-        log.info(f"Effect '{effect_name or 'default'}' completed single run")
+    # Case 2: Configure and run once inline
+    if effect:
+        # Generate name if not provided
+        if not effect_name:
+            manager.effect_counter += 1
+            effect_name = f"effect_{manager.effect_counter}"
+        
+        log.info(f"Configuring and running effect '{effect_name}' once: {effect}")
+        
+        # Load effect class
+        if not manager.load_effect_class(effect):
+            log.error("Failed to load effect")
+            return
+        
+        # Setup state provider if needed
+        if state_entity:
+            manager.setup_state_provider(state_entity, state_attribute)
+        
+        # Build kwargs
+        effect_kwargs = {}
+        if manager.state_provider:
+            effect_kwargs["state_provider"] = manager.state_provider
+        if auto_detect is not None:
+            effect_kwargs["auto_detect"] = auto_detect
+        if segment_id is not None:
+            effect_kwargs["segment_id"] = segment_id
+        if start_led is not None:
+            effect_kwargs["start_led"] = start_led
+        if stop_led is not None:
+            effect_kwargs["stop_led"] = stop_led
+        if led_brightness is not None:
+            effect_kwargs["led_brightness"] = led_brightness
+        
+        # Create and run once
+        if manager.create_effect(**effect_kwargs):
+            manager.started_effects[effect_name] = manager.effect
+            
+            if await manager.run_once_effect_instance(manager.effect):
+                log.info(f"Effect '{effect_name}' configured and completed single run")
+            else:
+                log.error("Failed to run effect once")
+        else:
+            log.error("Failed to create effect")
+        return
+    
+    # Case 3: Run most recently configured effect once
+    if manager.effect is None:
+        log.error("No effect configured or specified")
+        return
+    
+    log.info("Running most recently configured effect once...")
+    if await manager.run_once_effect_instance(manager.effect):
+        log.info("Effect completed single run")
     else:
         log.error("Failed to run effect once")
 
