@@ -26,12 +26,16 @@ class RainbowWaveEffect(WLEDEffectBase):
     """Rainbow wave that moves across the strip"""
     
     def __init__(self, task_manager, logger, http_client, auto_detect=True,
-                 segment_id=None, start_led=None, stop_led=None, led_brightness=None):
+                 segment_id=None, start_led=None, stop_led=None, led_brightness=None,
+                 effect_config=None):
         # Manually initialize all base class attributes (pyscript doesn't fully support super())
         # Assign unique instance ID for this effect
         from wled.wled_effect_base import WLEDEffectBase
         WLEDEffectBase._instance_counter += 1
         self.instance_id = WLEDEffectBase._instance_counter
+        
+        # Effect-specific configuration
+        self.config = effect_config if effect_config is not None else {}
         
         self.task = task_manager
         self.log = logger

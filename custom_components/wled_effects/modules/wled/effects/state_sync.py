@@ -13,16 +13,16 @@ from wled.wled_effect_base import (
 )
 
 
-# Effect Configuration
-EFFECT_ANIM_MODE = "Center"         # Animation mode: "Single", "Dual", or "Center"
-                                     # Single: Fill from start to end (left to right)
-                                     # Dual: Fill from both ends toward middle
-                                     # Center: Fill from middle outward to both ends
-SYNC_COLOR = (255, 30, 10)         # Color for "filled" LEDs (brownish by default)
-SYNC_BACKGROUND_COLOR = (0, 0, 0)  # Color for "empty" LEDs (dim black)
-SYNC_SMOOTH_TRANSITION = True       # Animate changes smoothly
-SYNC_TRANSITION_STEPS = 10          # Steps for smooth animation
-SYNC_TRANSITION_SPEED = 0.05        # Seconds per step
+# Default Effect Configuration
+DEFAULT_ANIM_MODE = "Center"         # Animation mode: "Single", "Dual", or "Center"
+                                      # Single: Fill from start to end (left to right)
+                                      # Dual: Fill from both ends toward middle
+                                      # Center: Fill from middle outward to both ends
+DEFAULT_SYNC_COLOR = (255, 30, 10)         # Color for "filled" LEDs (brownish by default)
+DEFAULT_SYNC_BACKGROUND_COLOR = (0, 0, 0)  # Color for "empty" LEDs (dim black)
+DEFAULT_SMOOTH_TRANSITION = True           # Animate changes smoothly
+DEFAULT_TRANSITION_STEPS = 10              # Steps for smooth animation
+DEFAULT_TRANSITION_SPEED = 0.05            # Seconds per step
 
 
 class StateSyncEffect(WLEDEffectBase):
@@ -32,7 +32,8 @@ class StateSyncEffect(WLEDEffectBase):
     REQUIRES_STATE_PROVIDER = True
     
     def __init__(self, task_manager, logger, http_client, state_provider, auto_detect=True,
-                 segment_id=None, start_led=None, stop_led=None, led_brightness=None):
+                 segment_id=None, start_led=None, stop_led=None, led_brightness=None,
+                 effect_config=None):
         """
         Args:
             state_provider: Object with get_state() method that returns 0-100 value
@@ -75,6 +76,9 @@ class StateSyncEffect(WLEDEffectBase):
         self.success_count = 0
         self.fail_count = 0
         
+        # Effect-specific configuration
+        self.config = effect_config if effect_config is not None else {}
+        
         # Effect-specific initialization
         self.state_provider = state_provider
         self.current_percentage = 0
@@ -88,6 +92,11 @@ class StateSyncEffect(WLEDEffectBase):
         total_leds = self.stop_led - self.start_led + 1
         lit_count = int((percentage / 100.0) * total_leds)
         
+        # Get config values with defaults
+        anim_mode = self.config.get('anim_mode', DEFAULT_ANIM_MODE)
+        sync_color = self.config.get('sync_color', DEFAULT_SYNC_COLOR)
+        bg_color = self.config.get('background_color', DEFAULT_SYNC_BACKGROUND_COLOR)
+        
         led_array = []
         
         for led_pos in range(self.start_led, self.stop_led + 1):
@@ -96,16 +105,16 @@ class StateSyncEffect(WLEDEffectBase):
             # Determine if this LED should be lit based on animation mode
             should_light = False
             
-            if EFFECT_ANIM_MODE == "Single":
+            if anim_mode == "Single":
                 # Fill from start to end (left to right)
                 should_light = (led_index < lit_count)
                 
-            elif EFFECT_ANIM_MODE == "Dual":
+            elif anim_mode == "Dual":
                 # Fill from both ends toward middle
                 lit_per_side = int((percentage / 200.0) * total_leds)
                 should_light = (led_index < lit_per_side) or (led_index >= total_leds - lit_per_side)
                 
-            elif EFFECT_ANIM_MODE == "Center":
+            elif anim_mode == "Center":
                 # Fill from middle outward to both ends
                 center_index = total_leds / 2.0
                 start_index = int(center_index - lit_count / 2.0)
@@ -115,28 +124,30 @@ class StateSyncEffect(WLEDEffectBase):
             # Set color based on whether LED should be lit
             if should_light:
                 # This LED should be "filled" (active color)
-                r = int(SYNC_COLOR[0] * (self.led_brightness / 255.0))
-                g = int(SYNC_COLOR[1] * (self.led_brightness / 255.0))
-                b = int(SYNC_COLOR[2] * (self.led_brightness / 255.0))
+                r = int(sync_color[0] * (self.led_brightness / 255.0))
+                g = int(sync_color[1] * (self.led_brightness / 255.0))
+                b = int(sync_color[2] * (self.led_brightness / 255.0))
             else:
                 # This LED should be "empty" (background color)
-                r = int(SYNC_BACKGROUND_COLOR[0] * (self.led_brightness / 255.0))
-                g = int(SYNC_BACKGROUND_COLOR[1] * (self.led_brightness / 255.0))
-                b = int(SYNC_BACKGROUND_COLOR[2] * (self.led_brightness / 255.0))
+                r = int(bg_color[0] * (self.led_brightness / 255.0))
+                g = int(bg_color[1] * (self.led_brightness / 255.0))
+                b = int(bg_color[2] * (self.led_brightness / 255.0))
             
             hex_color = f"{r:02x}{g:02x}{b:02x}"
             led_array.extend([led_index, hex_color])
         
         payload = {"seg": {"id": self.segment_id, "i": led_array, "bri": 255}}
-        await self.send_wled_command(payload, f"Display {percentage:.1f}% ({EFFECT_ANIM_MODE} mode)")
+        await self.send_wled_command(payload, f"Display {percentage:.1f}% ({anim_mode} mode)")
     
     async def smooth_transition(self, from_pct, to_pct):
         """Smoothly animate from one percentage to another"""
-        if not SYNC_SMOOTH_TRANSITION or from_pct == to_pct:
+        smooth = self.config.get('smooth_transition', DEFAULT_SMOOTH_TRANSITION)
+        steps = self.config.get('transition_steps', DEFAULT_TRANSITION_STEPS)
+        speed = self.config.get('transition_speed', DEFAULT_TRANSITION_SPEED)
+        
+        if not smooth or from_pct == to_pct:
             await self.render_percentage(to_pct)
             return
-        
-        steps = SYNC_TRANSITION_STEPS
         for step in range(steps + 1):
             if not self.running:
                 return
@@ -156,7 +167,7 @@ class StateSyncEffect(WLEDEffectBase):
             await self.render_percentage(current)
             
             if step < steps:
-                await self.interruptible_sleep(SYNC_TRANSITION_SPEED)
+                await self.interruptible_sleep(speed)
     
     async def run_effect(self):
         """Main effect loop - monitors state and updates display"""

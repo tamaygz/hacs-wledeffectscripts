@@ -409,6 +409,7 @@ manager = WLEDEffectManager()
 def wled_effect_configure(
     effect: str = "Segment Fade",
     effect_name: str = None,
+    effect_config: dict = None,
     state_entity: str = None,
     state_attribute: str = None,
     trigger_entity: str = None,
@@ -441,6 +442,11 @@ fields:
     example: "rainbow_seg1"
     selector:
       text:
+  effect_config:
+    description: Effect-specific configuration (key-value pairs, e.g. {"anim_mode":"Single","sync_color":[255,0,0]})
+    example: '{"anim_mode":"Dual","smooth_transition":false}'
+    selector:
+      object:
   state_entity:
     description: Entity ID for state provider (required for State Sync effect)
     example: "sensor.living_room_temperature"
@@ -529,6 +535,10 @@ fields:
     # Build effect constructor kwargs
     effect_kwargs = {}
     
+    # Add effect-specific configuration
+    if effect_config:
+        effect_kwargs["effect_config"] = effect_config
+    
     # Add state provider if exists (for StateSyncEffect)
     if manager.state_provider:
         effect_kwargs["state_provider"] = manager.state_provider
@@ -558,6 +568,7 @@ fields:
 async def wled_effect_start(
     effect_name: str = None,
     effect: str = None,
+    effect_config: dict = None,
     state_entity: str = None,
     state_attribute: str = None,
     auto_detect: bool = True,
@@ -585,6 +596,11 @@ fields:
           - "Segment Fade"
           - "Loading"
           - "State Sync"
+  effect_config:
+    description: Effect-specific configuration (key-value pairs)
+    example: '{"anim_mode":"Dual","sync_color":[255,0,0]}'
+    selector:
+      object:
   state_entity:
     description: Entity ID for state provider (for State Sync effect)
     example: "sensor.living_room_temperature"
@@ -741,6 +757,7 @@ fields:
 async def wled_effect_run_once(
     effect_name: str = None,
     effect: str = None,
+    effect_config: dict = None,
     state_entity: str = None,
     state_attribute: str = None,
     auto_detect: bool = True,
@@ -768,6 +785,11 @@ fields:
           - "Segment Fade"
           - "Loading"
           - "State Sync"
+  effect_config:
+    description: Effect-specific configuration (key-value pairs)
+    example: '{"anim_mode":"Single","smooth_transition":true}'
+    selector:
+      object:
   state_entity:
     description: Entity ID for state provider (for State Sync effect)
     example: "sensor.living_room_temperature"

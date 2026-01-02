@@ -34,8 +34,9 @@ class WLEDEffectBase(ABC):
     # Class-level instance counter for unique task names
     _instance_counter = 0
     
-    def __init__(self, task_manager, logger, http_client, auto_detect=True, 
-                 segment_id=None, start_led=None, stop_led=None, led_brightness=None):
+    def __init__(self, task_manager, logger, http_client, auto_detect=True,
+                 segment_id=None, start_led=None, stop_led=None, led_brightness=None,
+                 effect_config=None):
         """
         Initialize the effect controller
         
@@ -72,6 +73,9 @@ class WLEDEffectBase(ABC):
         self._manual_segment_id = segment_id is not None
         self._manual_start_led = start_led is not None
         self._manual_stop_led = stop_led is not None
+        
+        # Effect-specific configuration (key-value store)
+        self.config = effect_config if effect_config is not None else {}
         
         # State
         self.running = False
