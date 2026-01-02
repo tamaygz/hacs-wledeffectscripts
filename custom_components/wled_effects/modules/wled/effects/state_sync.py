@@ -148,6 +148,7 @@ class StateSyncEffect(WLEDEffectBase):
         if not smooth or from_pct == to_pct:
             await self.render_percentage(to_pct)
             return
+        
         for step in range(steps + 1):
             if not self.running:
                 return
