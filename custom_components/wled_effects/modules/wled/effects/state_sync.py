@@ -40,6 +40,11 @@ class StateSyncEffect(WLEDEffectBase):
                            For standalone: mock object that returns test values
         """
         # Manually initialize all base class attributes (pyscript doesn't fully support super())
+        # Assign unique instance ID for this effect
+        from wled.wled_effect_base import WLEDEffectBase
+        WLEDEffectBase._instance_counter += 1
+        self.instance_id = WLEDEffectBase._instance_counter
+        
         self.task = task_manager
         self.log = logger
         self.http = http_client
